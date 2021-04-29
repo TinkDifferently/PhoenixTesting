@@ -1,0 +1,5 @@
+{
+  "baseUrl": "https://www.aviasales.ru/",
+  "timeout": 300,
+  "page.path": "/pages"
+}
