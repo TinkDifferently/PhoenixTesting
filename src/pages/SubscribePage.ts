@@ -1,5 +1,5 @@
 import {LocatableButton, LocatableInput, LocatableLabel} from "../elements";
-import {page} from "./index";
+import {page} from "../page";
 import {WebDriver, WebElementCondition} from "selenium-webdriver";
 import context from "../context/context";
 

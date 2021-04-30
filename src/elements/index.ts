@@ -1,40 +1,7 @@
 import context from "../context/context";
-import {Locator, WebDriver, WebElement, WebElementPromise} from "selenium-webdriver";
+import {Locator, WebDriver, WebElementPromise} from "selenium-webdriver";
 import {elementTextMatches} from "selenium-webdriver/lib/until";
-
-export type click = 'click' | 'нажать';
-export type setText = 'set text' | 'установить текст';
-export type setDate = 'set date' | 'установить дату';
-export type getText = 'get text' | 'получить текст';
-export type checkText = 'check text' | 'проверить текст';
-
-type elementAction = click | setText | getText | setDate | checkText;
-
-interface Action<T extends elementAction> {
-    action: T;
-}
-
-interface ClickAction extends Action<click> {
-
-}
-
-interface AssertTextAction extends Action<checkText> {
-    expectedText: string
-}
-
-interface SetTextAction extends Action<setText> {
-    text: string;
-}
-
-interface SetDateAction extends Action<setDate> {
-    date: string;
-}
-
-interface GetTextAction extends Action<getText> {
-    key: string;
-}
-
-export type Interaction = ClickAction | SetTextAction | GetTextAction | SetDateAction | AssertTextAction;
+import {Action, Interaction} from "./actions";
 
 export type Element<T extends string = string> = {
     locator: Locator;
@@ -45,15 +12,15 @@ export interface HasText {
     getText: () => Promise<string>;
 }
 
-export interface IAssertText extends HasText {
+export interface AssertText extends HasText {
     checkText: (expectedText: string) => Promise<boolean>;
 }
 
-export interface IInputText extends HasText {
+export interface InputText extends HasText {
     setText: (text: string) => void;
 }
 
-export interface IInputDate extends HasText {
+export interface InputDate extends HasText {
     setText: (text: string) => void;
 }
 
@@ -61,28 +28,9 @@ export interface HasTitle {
     getTitle: () => string;
 }
 
-export type Provider = {
-    elementName?: string,
-}
-
 
 export interface Clickable {
-    click: (input?: object) => void;
-}
-
-export type ButtonProvider = Provider & HasTitle & Clickable;
-
-export type InputProvider = Provider & IInputText & Clickable;
-
-export type Button = Element & ButtonProvider;
-
-export type Input = Element & InputProvider;
-
-export const WebButton: ButtonProvider = {
-    getTitle: () => '',
-    click: () => {
-
-    },
+    click: (input?: object) => Promise<void>;
 }
 
 function find(locator: Locator): WebElementPromise {
@@ -115,7 +63,7 @@ export class LocatableButton<T extends string> extends LocatableElement<T> imple
     }
 }
 
-export class LocatableLabel<T extends string> extends LocatableElement<T> implements IAssertText {
+export class LocatableLabel<T extends string> extends LocatableElement<T> implements AssertText {
     constructor(title: T, locator: Locator) {
         super(title, locator);
     }
@@ -136,7 +84,7 @@ export class LocatableLabel<T extends string> extends LocatableElement<T> implem
     }
 }
 
-export class LocatableInput<T extends string> extends LocatableElement<T> implements IInputText {
+export class LocatableInput<T extends string> extends LocatableElement<T> implements InputText {
     constructor(title: T, locator: Locator) {
         super(title, locator);
     }
@@ -152,7 +100,7 @@ export class LocatableInput<T extends string> extends LocatableElement<T> implem
     }
 }
 
-export class LocatableCalendar<T extends string> extends LocatableElement<T> implements IInputDate {
+export class LocatableCalendar<T extends string> extends LocatableElement<T> implements InputDate {
     constructor(title: T, locator: Locator) {
         super(title, locator);
     }
@@ -172,6 +120,71 @@ export class LocatableCalendar<T extends string> extends LocatableElement<T> imp
         const dayValue = this.find().findElement({xpath: `.//div[@class='calendar-day__date'][text()='${day}']`});
         await dayValue.click();
     }
+}
+
+
+type handler = (element: Element, action: Action<string>) => Promise<boolean>;
+export let handlers: handler[] = [];
+
+function initHandlers() {
+
+    handlers.push(async (element, {action}) => {
+        throw Error(`Не зарегестрирован хендл для '${action}'`)
+    })
+
+    handlers.push(async (element, {action}: Interaction) => {
+        if (action === 'click' || action == 'нажать') {
+            const clickable = element as unknown as Clickable;
+            await clickable.click();
+            return true;
+        }
+        return false;
+    })
+
+    handlers.push(async (element, {action}) => {
+        if (action === 'get text' || action === 'получить текст') {
+            const hasText = element as unknown as HasText;
+            await hasText.getText();
+            return true;
+        }
+        return false;
+    })
+
+    handlers.push(async (element, action: Interaction) => {
+        if (action.action === 'set text' || action.action == 'установить текст') {
+            const inputText = element as unknown as InputText;
+            await inputText.setText(action.text);
+            return true;
+        }
+        return false;
+    })
+
+    handlers.push(async (element, action: Interaction) => {
+        if (action.action === 'set date' || action.action == 'установить дату') {
+            const inputDate = element as unknown as InputDate;
+            await inputDate.setText(action.date);
+            return true;
+        }
+        return false;
+    })
+
+    handlers.push(async (element, action: Interaction) => {
+        if (action.action === 'check text' || action.action == 'проверить текст') {
+            const assertText = element as unknown as AssertText;
+            await assertText.checkText(action.expectedText);
+            return true;
+        }
+        return false;
+    })
+}
+
+export function refreshHandlers() {
+    handlers = [];
+    initHandlers();
+}
+
+export function pushHandler(handler: handler) {
+    handlers.push(handler)
 }
 
 

@@ -1,5 +1,5 @@
 import {LocatableButton, LocatableCalendar, LocatableInput} from "../elements";
-import {page} from "./index";
+import {page} from "../page";
 import {ThenableWebDriver} from "selenium-webdriver";
 import context from "../context/context";
 

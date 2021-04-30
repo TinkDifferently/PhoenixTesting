@@ -1,5 +1,5 @@
 import {searchFiles} from './files-searcher'
-import {Page} from '../pages'
+import {Page} from '../page'
 
 interface FilePathMapperOptions {
     startDirectory: string

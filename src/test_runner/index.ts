@@ -1,12 +1,10 @@
 import {buildPages} from "../utils";
-import {PageElement} from "../pages";
+import {PageElement} from "../page";
 import context from "../context/context";
-import {Builder, WebDriver} from "selenium-webdriver";
+import {Builder} from "selenium-webdriver";
 import * as chrome from "selenium-webdriver/chrome";
 import logger from "../logger";
-
-
-
+import {refreshHandlers} from "../elements";
 
 export type PageSource = (title: string) => PageElement<string>;
 
@@ -27,23 +25,24 @@ export async function runTest(test: test | test[]): Promise<void> {
 
     let tests: test[];
     if (!(test instanceof Array)) {
-        tests=[];
+        tests = [];
         tests.push(test);
     } else {
         tests = test;
     }
 
-    if (tests.length==0){
+    if (tests.length == 0) {
         return;
     }
 
     const manager = await buildPages();
+    refreshHandlers();
 
 
     const extractor = (pageTitle: string) => manager.get(pageTitle).get;
 
     for (const item of tests) {
-        const driver=await initDriver();
+        const driver = await initDriver();
         await item(extractor)
             .catch(any => {
                 logger.error(any)
