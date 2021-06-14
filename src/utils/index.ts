@@ -1,6 +1,7 @@
 import {searchFiles} from './files-searcher'
 import {Page} from '../page'
 
+
 interface FilePathMapperOptions {
     startDirectory: string
 }
@@ -10,11 +11,11 @@ export type PageManager = Map<string, Page<string>>;
 export async function filePathMapper({startDirectory}: FilePathMapperOptions): Promise<PageManager> {
     const pages = new Map<string, Page<string>>();
     const regex: RegExp = new RegExp(`.*\\\\(.*).ts`);
-    await searchFiles(startDirectory).then(files => {
-        files.map(file => file.toString()).map(filePath => '../pages/' + regex.exec(filePath)[1])
+    await searchFiles(`/${startDirectory}`).then(files => {
+        files.map(file => file.toString()).map(filePath => `./src/${startDirectory}/${regex.exec(filePath)[1]}`)
             .filter(group => !group.includes('index'))
-            .map(id => require(id).default)
-            .forEach(page => pages.set(page.title, page))
+            .map(id => require.main.require(id).default)
+            .forEach(page => pages.set(page.title, page));
     });
     return pages;
 }

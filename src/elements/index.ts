@@ -1,7 +1,8 @@
 import context from "../context/context";
-import {Locator, WebDriver, WebElementPromise} from "selenium-webdriver";
+import {Locator, WebDriver, WebElement, WebElementPromise} from "selenium-webdriver";
 import {elementTextMatches} from "selenium-webdriver/lib/until";
 import {Action, Interaction} from "./actions";
+import {AutotestFailed} from "../exceptions";
 
 export type Element<T extends string = string> = {
     locator: Locator;
@@ -18,6 +19,14 @@ export interface AssertText extends HasText {
 
 export interface InputText extends HasText {
     setText: (text: string) => void;
+}
+
+export interface SelectByValue {
+    selectByValue: (value: string) => void;
+}
+
+export interface SelectByIndex {
+    selectByIndex: (index: number) => void;
 }
 
 export interface InputDate extends HasText {
@@ -38,7 +47,7 @@ function find(locator: Locator): WebElementPromise {
     return driver.findElement(locator);
 }
 
-abstract class LocatableElement<T extends string> implements Element<T> {
+export abstract class LocatableElement<T extends string> implements Element<T> {
 
     protected constructor(title: T, locator: Locator) {
         this.locator = locator;
@@ -70,16 +79,18 @@ export class LocatableLabel<T extends string> extends LocatableElement<T> implem
 
     async checkText(expectedText: string): Promise<boolean> {
         const actual = await this.getText();
+        console.log(actual)
         if (actual !== expectedText) {
-            throw Error(`Actual text: '${actual}' does not fit expected '${expectedText}'`)
+            throw new AutotestFailed(`Actual text: '${actual}' does not fit expected '${expectedText}'`)
         }
         return true;
     }
 
     async getText(): Promise<string> {
         const driver: WebDriver = await context.get('driver');
-        const el = await this.find();
-        driver.wait(elementTextMatches(el, /.+/))
+        let el = await this.find();
+        await driver.wait(elementTextMatches(el, /.+/))
+        el = this.find()
         return await el.getText();
     }
 }
@@ -100,25 +111,43 @@ export class LocatableInput<T extends string> extends LocatableElement<T> implem
     }
 }
 
-export class LocatableCalendar<T extends string> extends LocatableElement<T> implements InputDate {
-    constructor(title: T, locator: Locator) {
+export class LocatableSelect<T extends string> extends LocatableElement<T> implements SelectByValue, SelectByIndex {
+    constructor(title: T, locator: Locator, itemLocator: Locator) {
         super(title, locator);
+        this.itemLocator = itemLocator;
     }
 
-    async getText(): Promise<string> {
-        return await this.find().getText();
+    itemLocator: Locator;
+
+    async getOptions(): Promise<WebElement[]> {
+        return await this.find().findElements(this.itemLocator)
     }
 
-    async setText(date: string = new Date().toDateString()): Promise<void> {
-        const dateBox = new Date(Date.parse(date))
-        const month = new Intl.DateTimeFormat('ru', {month: 'long'}).format(dateBox).substr(1);
-        const day = new Intl.DateTimeFormat('ru', {day: 'numeric'}).format(dateBox)
-        const monthSelect = this.find().findElement({xpath: `.//select[@class='calendar-caption__select']`});
-        await monthSelect.click()
-        const monthValue = this.find().findElement({xpath: `.//option[contains(text(),'${month}')]`});
-        await monthValue.click();
-        const dayValue = this.find().findElement({xpath: `.//div[@class='calendar-day__date'][text()='${day}']`});
-        await dayValue.click();
+    async selectByIndex(index: number): Promise<void> {
+        const options = await this.getOptions();
+        if (options.length === 0) {
+            throw new AutotestFailed("Пустой список");
+        }
+        if (options.length <= --index) {
+            throw new AutotestFailed(`В списке только '${index}' опций`);
+        }
+        await options[index].click()
+    }
+
+    async selectByValue(value: string): Promise<void> {
+        const options = await this.getOptions();
+        if (options.length === 0) {
+            throw new AutotestFailed("Пустой список");
+        }
+        for (const option of options) {
+            const item = await option;
+            const actual = await item.getText();
+            if (actual === value) {
+                await item.click()
+                return;
+            }
+        }
+        throw new AutotestFailed(`В списке нет элемента со значением '${value}'`)
     }
 }
 
@@ -172,6 +201,20 @@ function initHandlers() {
         if (action.action === 'check text' || action.action == 'проверить текст') {
             const assertText = element as unknown as AssertText;
             await assertText.checkText(action.expectedText);
+            return true;
+        }
+        return false;
+    })
+
+    handlers.push(async (element, action: Interaction) => {
+        if (action.action === 'select item' || action.action === 'выбрать элемент') {
+            if (action['text']) {
+                const select = element as unknown as SelectByValue;
+                await select.selectByValue(action['text'])
+            } else {
+                const select = element as unknown as SelectByIndex;
+                await select.selectByIndex(action['index'])
+            }
             return true;
         }
         return false;

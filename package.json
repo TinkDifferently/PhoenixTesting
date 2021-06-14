@@ -1,8 +1,9 @@
 {
-  "name": "TestProto",
-  "version": "1.0.0",
+  "name": "no-gkerkin-webtest",
+  "version": "1.0.8-beta",
   "scripts": {
-    "start": "ts-node index.ts"
+    "build": "tsc",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "@types/chromedriver": "^81.0.0",
@@ -17,5 +18,16 @@
     "ts-node": "^9.1.1",
     "chromedriver": "^90.0.0",
     "@types/chromedriver": "^81.0.0"
-  }
+  },
+  "keywords": [
+    "Selenium",
+    "Automated testing"
+  ],
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "author": "no-gherkin",
+  "license": "ISC",
+  "files": [
+    "lib/**/*"
+  ]
 }

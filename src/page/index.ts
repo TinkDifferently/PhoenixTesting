@@ -1,16 +1,15 @@
 import {Element, handlers} from "../elements";
 import context from "../context/context";
 import {WebDriver} from "selenium-webdriver";
-import {Interaction} from "../elements/actions";
+import {Action, Interaction} from "../elements/actions";
 
-export type PageInteraction = (interaction: Interaction) => void;
+export type PageInteraction<Y extends Action<string>> = (interaction: Y) => void;
+export type PageElement<T extends string, Y extends Action<string>=Interaction> = (elementName: T) => PageInteraction<Y>;
 
-export type PageElement<T extends string> = (elementName: T) => PageInteraction;
-
-export interface Page<T extends string> {
+export interface Page<T extends string, Y extends Action<string>=Interaction> {
     title: string;
     content: readonly Element[];
-    get: PageElement<T>;
+    get: PageElement<T,Y>;
 }
 
 function bindPage<T extends string>(title: string, content: readonly Element[], switchAction?: () => Promise<boolean>): Page<T> {
